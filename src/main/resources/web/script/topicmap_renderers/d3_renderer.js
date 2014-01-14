@@ -1,7 +1,5 @@
 /**
- * A topicmap renderer that displays a geo map in the background. The rendering is based on OpenLayers library.
- *
- * OpenLayers specifics are encapsulated. The caller must not know about OpenLayers API usage.
+ * A topicmap renderer based on D3.
  */
 function D3Renderer() {
 
@@ -33,12 +31,34 @@ function D3Renderer() {
     // ---
 
     this.load_topicmap = function(topicmap_id, config) {
+        config.customizers = []
         return new TopicmapViewmodel(topicmap_id, config)
     }
 
     this.display_topicmap = function(topicmap_viewmodel, no_history_update) {
         topicmap = topicmap_viewmodel
         d3_view.display_topicmap(topicmap)
+    }
+
+    // ---
+
+    // ### TODO: principal copy in canvas_renderer.js
+    this.show_topic = function(topic, do_select) {
+        d3_view.init_topic_position(topic)
+        // update viewmodel
+        var topic_viewmodel = topicmap.add_topic(topic, topic.x, topic.y)
+        if (do_select) {
+            topicmap.set_topic_selection(topic.id)
+        }
+        // update view
+        if (topic_viewmodel) {
+            d3_view.show_topic(topic_viewmodel)
+        }
+        if (do_select) {
+            d3_view.set_topic_selection(topic.id)
+        }
+        //
+        return topic
     }
 
 
