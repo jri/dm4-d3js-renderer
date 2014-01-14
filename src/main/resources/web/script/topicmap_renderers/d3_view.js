@@ -66,9 +66,7 @@ function D3View() {
     }
 
     this.set_topic_selection = function(topic_id) {
-        // render
-        // ### refresh()                                           // canvas
-        // ### DOM_FLAVOR && update_selection_dom(topic_id)        // topic layer DOM
+        update_selection_dom(topic_id)
     }
 
     this.init_topic_position = function(topic) {
@@ -81,6 +79,8 @@ function D3View() {
 
     // ----------------------------------------------------------------------------------------------- Private Functions
 
+    // === Force Simulation ===
+
     function restart() {
 
         assocs = assocs.data(links)
@@ -91,7 +91,9 @@ function D3View() {
         topics.enter().append("circle")
             .attr("class", "topic")
             .attr("r", 8)
+            .attr("data-topic-id", function(d) {return d.id})
             .call(force.drag)
+            .on("click", click)
             .append("title").text(function(d) {return d.label})
 
         force.start()
@@ -117,6 +119,27 @@ function D3View() {
             })
         })
         return data
+    }
+
+    // ===
+
+    function click(d) {
+        dm4c.do_select_topic(d.id)
+    }
+
+    // ===
+
+    function update_selection_dom(topic_id) {
+        remove_selection_dom()                                                              // remove former selection
+        d3.select(".topic[data-topic-id=\"" + topic_id + "\"]").classed("selected", true)   // set new selection
+        // ### get_topic(topic_id).dom.addClass("selected")    
+    }
+
+    function remove_selection_dom() {
+        d3.select("#topicmap-panel .topic.selected").classed("selected", false)
+        // Note: the topicmap viewmodel selection is already updated. So we can't get the formerly
+        // selected topic ID and can't use get_topic(). So we do DOM traversal instead.
+        // ### TODO: consider equipping the canvas view with a selection model.
     }
 
     // ---

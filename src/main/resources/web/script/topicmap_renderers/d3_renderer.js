@@ -61,6 +61,20 @@ function D3Renderer() {
         return topic
     }
 
+    // ---
+
+    // ### TODO: principal copy in canvas_renderer.js
+    this.select_topic = function(topic_id) {
+        // fetch from DB
+        var topic = dm4c.fetch_topic(topic_id)
+        // update viewmodel
+        topicmap.set_topic_selection(topic_id)
+        // update view
+        d3_view.set_topic_selection(topic_id)
+        //
+        return {select: topic, display: topic}
+    }
+
 
 
     // === Left SplitPanel Component Implementation ===
