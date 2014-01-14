@@ -1,0 +1,11 @@
+#topicmap-panel .topic {
+    fill: #1f77b4;
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+#topicmap-panel .assoc {
+    stroke: #999;
+    stroke-width: 4px;
+    stroke-opacity: 0.6;
+}
