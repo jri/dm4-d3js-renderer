@@ -1,15 +1,17 @@
 function D3View() {
 
-    // Viewmodel
-    var topicmap            // the viewmodel underlying this view (a TopicmapViewmodel)
-
     // View
     var svg
     var width, height
 
-    var force
-    var nodes, links
-    var topics, assocs
+    var force               // D3 force layout
+    var nodes, links        // force layout model
+    var topics, assocs      // force layout DOM
+
+    var body = d3.select("body")[0][0]
+
+    // Viewmodel
+    var topicmap            // the viewmodel underlying this view (a TopicmapViewmodel)
 
     // ------------------------------------------------------------------------------------------------------ Public API
 
@@ -21,8 +23,8 @@ function D3View() {
             .charge(-120)
             .linkDistance(80)       // default is 20
             .size([width, height])
-            .nodes(get_topic_data(topicmap))
-            .links(get_assoc_data(topicmap))
+            .nodes(get_nodes_data(topicmap))
+            .links(get_links_data(topicmap))
             .on("start", function() {console.log("simulation started")})
             .on("end",   function() {console.log("simulation ended")})
             .on("tick",  function() {
@@ -65,9 +67,22 @@ function D3View() {
         restart()
     }
 
+    // ---
+
+    this.remove_topic = function(topic_id) {
+        js.delete(nodes, function(topic) {
+            return topic.id == topic_id
+        })
+        restart()
+    }
+
+    // ---
+
     this.set_topic_selection = function(topic_id) {
         update_selection_dom(topic_id)
     }
+
+    // ---
 
     this.init_topic_position = function(topic) {
         if (topic.x == undefined || topic.y == undefined) {
@@ -78,6 +93,8 @@ function D3View() {
     }
 
     // ----------------------------------------------------------------------------------------------- Private Functions
+
+
 
     // === Force Simulation ===
 
@@ -93,15 +110,17 @@ function D3View() {
             .attr("r", 8)
             .attr("data-topic-id", function(d) {return d.id})
             .call(force.drag)
-            .on("click", click)
+            .on("click", on_click)
+            .on("contextmenu", on_contextmenu)
             .append("title").text(function(d) {return d.label})
+        topics.exit().remove()
 
         force.start()
     }
 
     // ---
 
-    function get_topic_data(topicmap_viewmodel) {
+    function get_nodes_data(topicmap_viewmodel) {
         var data = []
         topicmap_viewmodel.iterate_topics(function(topic) {
             // topic.fixed = true
@@ -110,7 +129,7 @@ function D3View() {
         return data
     }
 
-    function get_assoc_data(topicmap_viewmodel) {
+    function get_links_data(topicmap_viewmodel) {
         var data = []
         topicmap_viewmodel.iterate_associations(function(assoc) {
             data.push({
@@ -121,18 +140,30 @@ function D3View() {
         return data
     }
 
-    // ===
 
-    function click(d) {
+
+    // === Events Handling ===
+
+    function on_click(d) {
         dm4c.do_select_topic(d.id)
     }
 
-    // ===
+    function on_contextmenu(d) {
+        dm4c.do_select_topic(d.id)
+        // Note: only dm4c.selected_object has the composite value (the TopicViewmodel has not)
+        var commands = dm4c.get_topic_commands(dm4c.selected_object, "context-menu")
+        var pos = d3.mouse(body)
+        dm4c.open_context_menu(commands, {x: pos[0], y: pos[1]})
+        d3.event.preventDefault()
+    }
+
+
+
+    // === DOM Manipulation ===
 
     function update_selection_dom(topic_id) {
-        remove_selection_dom()                                                              // remove former selection
-        d3.select(".topic[data-topic-id=\"" + topic_id + "\"]").classed("selected", true)   // set new selection
-        // ### get_topic(topic_id).dom.addClass("selected")    
+        remove_selection_dom()                          // remove former selection
+        get_topic(topic_id).classed("selected", true)   // set new selection
     }
 
     function remove_selection_dom() {
@@ -143,6 +174,14 @@ function D3View() {
     }
 
     // ---
+
+    function get_topic(id) {
+        return d3.select(".topic[data-topic-id=\"" + id + "\"]")
+    }
+
+
+
+    // ===
 
     // ### TODO: copy in canvas_view.js
     function random_position() {

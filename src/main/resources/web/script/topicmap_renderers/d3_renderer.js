@@ -64,6 +64,24 @@ function D3Renderer() {
     // ---
 
     // ### TODO: principal copy in canvas_renderer.js
+    this.delete_topic = function(topic_id) {
+        // update viewmodel
+        for_all_topicmaps("delete_topic", topic_id)
+        // update view
+        d3_view.remove_topic(topic_id)
+    }
+
+    // ---
+
+    // ### TODO: copy in canvas_renderer.js
+    this.is_topic_visible = function(topic_id) {
+        var topic = topicmap.get_topic(topic_id)
+        return topic && topic.visibility
+    }
+
+    // ---
+
+    // ### TODO: principal copy in canvas_renderer.js
     this.select_topic = function(topic_id) {
         // fetch from DB
         var topic = dm4c.fetch_topic(topic_id)
@@ -91,5 +109,25 @@ function D3Renderer() {
      */
     this.resize = function(size) {
         d3_view.resize(size)
+    }
+
+    // ----------------------------------------------------------------------------------------------- Private Functions
+
+    /**
+     * Iterates through all topicmaps and calls the given function with the given argument on them.
+     * Returns the function call's return value for the topicmap that is currently displayed.
+     *
+     * ### TODO: updating *all* topicmaps should not be the responsibility of the topicmap renderer.
+     * ### TODO: copy in canvas_renderer.js
+     */
+    function for_all_topicmaps(topicmap_func, arg) {
+        var return_value
+        dm4c.get_plugin("de.deepamehta.topicmaps").iterate_topicmaps(function(_topicmap) {
+            var ret = _topicmap[topicmap_func](arg)
+            if (topicmap.get_id() == _topicmap.get_id()) {
+                return_value = ret
+            }
+        })
+        return return_value
     }
 }
