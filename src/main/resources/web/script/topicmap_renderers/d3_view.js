@@ -13,6 +13,11 @@ function D3View() {
     // Viewmodel
     var topicmap            // the viewmodel underlying this view (a TopicmapViewmodel)
 
+    // Short-term interaction state
+    var association_in_progress     // true while new association is pulled (boolean)
+    var action_topic                // the topic being selected/moved/associated (TopicViewmodel)
+    var has_moved
+
     // ------------------------------------------------------------------------------------------------------ Public API
 
     this.display_topicmap = function(topicmap_viewmodel) {
@@ -20,7 +25,7 @@ function D3View() {
         topicmap = topicmap_viewmodel
 
         force = d3.layout.force()
-            .charge(-120)
+            .charge(-120)           // default is -30
             .linkDistance(80)       // default is 20
             .size([width, height])
             .nodes(get_nodes_data(topicmap))
@@ -50,6 +55,7 @@ function D3View() {
         svg = d3.select(".topicmap-renderer").append("svg")
             .attr("width", width)
             .attr("height", height)
+            .on("mousemove", on_mousemove)
     }
 
     this.resize = function(size) {
@@ -67,6 +73,11 @@ function D3View() {
         restart()
     }
 
+    this.show_association = function(assoc) {
+        links.push(link_data(assoc))
+        restart()
+    }
+
     // ---
 
     this.remove_topic = function(topic_id) {
@@ -79,7 +90,13 @@ function D3View() {
     // ---
 
     this.set_topic_selection = function(topic_id) {
-        update_selection_dom(topic_id)
+        remove_selection_dom()                                  // remove former selection
+        get_topic_dom(topic_id).classed("selected", true)       // set new selection
+    }
+
+    this.set_association_selection = function(assoc_id) {
+        remove_selection_dom()                                  // remove former selection
+        get_association_dom(assoc_id).classed("selected", true) // set new selection
     }
 
     // ---
@@ -92,7 +109,32 @@ function D3View() {
         }
     }
 
+    this.begin_association = function(topic_id, x, y) {
+        association_in_progress = true
+        action_topic = get_topic(topic_id)
+        //
+        set_drawing_cursor(true)
+        svg.insert("line", ":first-child")
+            .attr("class", "assoc in-progress")
+            .attr("x1", action_topic.x)
+            .attr("y1", action_topic.y)
+            .attr("x2", x)
+            .attr("y2", y)
+    }
+
     // ----------------------------------------------------------------------------------------------- Private Functions
+
+
+
+    // === Model ===
+
+    function get_topic(id) {
+        return get_topic_dom(id).data()[0]
+    }
+
+    function get_association(id) {
+        return get_association_dom(id).data()[0]
+    }
 
 
 
@@ -101,7 +143,7 @@ function D3View() {
     function restart() {
 
         assocs = assocs.data(links)
-        assocs.enter().append("line")
+        assocs.enter().insert("line", ":first-child")
             .attr("class", "assoc")
 
         topics = topics.data(nodes)
@@ -110,7 +152,7 @@ function D3View() {
             .attr("r", 8)
             .attr("data-topic-id", function(d) {return d.id})
             .call(force.drag)
-            .on("click", on_click)
+            .on("mouseup", on_mouseup)
             .on("contextmenu", on_contextmenu)
             .append("title").text(function(d) {return d.label})
         topics.exit().remove()
@@ -132,24 +174,49 @@ function D3View() {
     function get_links_data(topicmap_viewmodel) {
         var data = []
         topicmap_viewmodel.iterate_associations(function(assoc) {
-            data.push({
-                source: assoc.get_topic_1(),
-                target: assoc.get_topic_2()
-            })
+            data.push(link_data(assoc))
         })
         return data
+    }
+
+    // ---
+
+    function link_data(assoc) {
+        return {
+            source: assoc.get_topic_1(),
+            target: assoc.get_topic_2()
+        }
     }
 
 
 
     // === Events Handling ===
 
-    function on_click(d) {
-        dm4c.do_select_topic(d.id)
+    function on_mousedown(topic) {
+        has_moved = false
     }
 
-    function on_contextmenu(d) {
-        dm4c.do_select_topic(d.id)
+    function on_mouseup(topic) {
+        if (association_in_progress) {
+            end_association_in_progress(topic)
+        } else if (!has_moved) {    // ### TODO
+            dm4c.do_select_topic(topic.id)
+        }
+    }
+
+    function on_mousemove() {
+        if (action_topic) {
+            if (association_in_progress) {
+                var pos = d3.mouse(svg[0][0])
+                get_association_in_progress()
+                    .attr("x2", pos[0])
+                    .attr("y2", pos[1])
+            }
+        }
+    }
+
+    function on_contextmenu(topic) {
+        dm4c.do_select_topic(topic.id)
         // Note: only dm4c.selected_object has the composite value (the TopicViewmodel has not)
         var commands = dm4c.get_topic_commands(dm4c.selected_object, "context-menu")
         var pos = d3.mouse(body)
@@ -157,26 +224,57 @@ function D3View() {
         d3.event.preventDefault()
     }
 
+    // ---
+
+    // ### TODO: principal copy in canvas_view.js
+    function end_association_in_progress(topic) {
+        association_in_progress = false
+        // Note: dm4c.do_create_association() implies refresh(). So association_in_progress
+        // is reset before. Otherwise the last drawn association state would stay on canvas.
+        if (topic && topic.id != action_topic.id) {
+            dm4c.do_create_association("dm4.core.association", action_topic.id, topic.id)
+        } else {
+            // ### refresh()   // remove incomplete association from canvas
+        }
+        //
+        action_topic = null
+        // render
+        get_association_in_progress().remove()
+        set_drawing_cursor(false)
+    }
+
+    // --- Cursor Shapes ---
+
+    // ### TODO: principal copy in canvas_view.js
+    function set_moving_cursor(flag) {
+        d3.select(".topicmap-renderer").classed("moving", flag)
+    }
+
+    // ### TODO: principal copy in canvas_view.js
+    function set_drawing_cursor(flag) {
+        d3.select(".topicmap-renderer").classed("drawing-assoc", flag)
+    }
+
 
 
     // === DOM Manipulation ===
 
-    function update_selection_dom(topic_id) {
-        remove_selection_dom()                          // remove former selection
-        get_topic(topic_id).classed("selected", true)   // set new selection
+    function get_topic_dom(id) {
+        return d3.select(".topic[data-topic-id=\"" + id + "\"]")
     }
 
-    function remove_selection_dom() {
-        d3.select("#topicmap-panel .topic.selected").classed("selected", false)
-        // Note: the topicmap viewmodel selection is already updated. So we can't get the formerly
-        // selected topic ID and can't use get_topic(). So we do DOM traversal instead.
-        // ### TODO: consider equipping the canvas view with a selection model.
+    function get_association_dom(id) {
+        return d3.select(".assoc[data-topic-id=\"" + id + "\"]")
     }
 
     // ---
 
-    function get_topic(id) {
-        return d3.select(".topic[data-topic-id=\"" + id + "\"]")
+    function remove_selection_dom() {
+        d3.select("#topicmap-panel .selected").classed("selected", false)
+    }
+
+    function get_association_in_progress() {
+        return d3.select(".assoc.in-progress")
     }
 
 

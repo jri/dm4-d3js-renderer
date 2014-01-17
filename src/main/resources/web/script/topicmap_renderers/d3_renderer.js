@@ -61,6 +61,22 @@ function D3Renderer() {
         return topic
     }
 
+    // ### TODO: principal copy in canvas_renderer.js
+    this.show_association = function(assoc, do_select) {
+        // update viewmodel
+        var assoc_viewmodel = topicmap.add_association(assoc)
+        if (do_select) {
+            topicmap.set_association_selection(assoc.id)
+        }
+        // update view
+        if (assoc_viewmodel) {
+            d3_view.show_association(assoc_viewmodel)
+        }
+        if (do_select) {
+            d3_view.set_association_selection(assoc.id)
+        }
+    }
+
     // ---
 
     // ### TODO: principal copy in canvas_renderer.js
@@ -93,6 +109,11 @@ function D3Renderer() {
         return {select: topic, display: topic}
     }
 
+    // ---
+
+    this.begin_association = function(topic_id, x, y) {
+        d3_view.begin_association(topic_id, x, y)
+    }
 
 
     // === Left SplitPanel Component Implementation ===
