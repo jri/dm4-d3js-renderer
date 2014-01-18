@@ -14,7 +14,8 @@ function D3View() {
     var topicmap            // the viewmodel underlying this view (a TopicmapViewmodel)
 
     // Short-term interaction state
-    var association_in_progress     // true while new association is pulled (boolean)
+    var association_in_progress     // true while new association is drawn (boolean)
+    var mousedown_on_canvas         // true while canvas click or canvas move (boolean)
     var action_topic                // the topic being selected/moved/associated (TopicViewmodel)
     var has_moved
 
@@ -55,6 +56,8 @@ function D3View() {
         svg = d3.select(".topicmap-renderer").append("svg")
             .attr("width", width)
             .attr("height", height)
+            .on("mousedown", on_canvas_mousedown)
+            .on("mouseup", on_canvas_mouseup)
             .on("mousemove", on_mousemove)
     }
 
@@ -106,6 +109,10 @@ function D3View() {
     this.set_association_selection = function(assoc_id) {
         remove_selection_dom()                                  // remove former selection
         get_association_dom(assoc_id).classed("selected", true) // set new selection
+    }
+
+    this.reset_selection = function() {
+        remove_selection_dom()                                  // remove former selection
     }
 
     // ---
@@ -164,7 +171,8 @@ function D3View() {
             .attr("class", "topic")
             .attr("r", 8)
             .call(force.drag)
-            .on("mouseup", on_mouseup)
+            .on("mousedown", on_topic_mousedown)
+            .on("mouseup", on_topic_mouseup)
             .on("contextmenu", on_topic_contextmenu)
             .append("title").text(function(d) {return d.label})
         topics.attr("data-topic-id", function(d) {return d.id})
@@ -206,15 +214,28 @@ function D3View() {
 
     // === Events Handling ===
 
-    function on_mousedown(topic) {
-        has_moved = false           // ### TODO
+    function on_topic_mousedown(topic) {
+        has_moved = false               // ### TODO
+        d3.event.stopPropagation()      // event must not reach the canvas
     }
 
-    function on_mouseup(topic) {
+    function on_canvas_mousedown() {
+        mousedown_on_canvas = true
+    }
+
+    function on_topic_mouseup(topic) {
         if (association_in_progress) {
             end_association_in_progress(topic)
-        } else if (!has_moved) {    // ### TODO
+        } else if (!has_moved) {        // ### TODO
             dm4c.do_select_topic(topic.id)
+        }
+    }
+
+    function on_canvas_mouseup() {
+        if (mousedown_on_canvas) {
+            dm4c.page_panel.save()      // ### TODO: the renderer should not responsible for saving the panel
+            dm4c.do_reset_selection()   // ### TODO: only reset selection if no canvas move was in progress
+            mousedown_on_canvas = false
         }
     }
 

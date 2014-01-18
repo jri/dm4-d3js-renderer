@@ -129,6 +129,14 @@ function D3Renderer() {
         return assoc
     }
 
+    // ### TODO: principal copy in canvas_renderer.js
+    this.reset_selection = function() {
+        // update viewmodel
+        topicmap.reset_selection()
+        // update view
+        d3_view.reset_selection()
+    }
+
     // ---
 
     this.begin_association = function(topic_id, x, y) {
