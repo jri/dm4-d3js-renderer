@@ -84,6 +84,7 @@ function D3View() {
         js.delete(nodes, function(topic) {
             return topic.id == topic_id
         })
+        remove_selection_dom()      // Note: D3 might rebind the selected element to another TopicViemodel
         restart()
     }
 
@@ -91,6 +92,7 @@ function D3View() {
         js.delete(links, function(assoc) {
             return assoc.id == assoc_id
         })
+        remove_selection_dom()      // Note: D3 might rebind the selected element to another TopicViemodel
         restart()
     }
 
@@ -152,20 +154,20 @@ function D3View() {
         assocs = assocs.data(links)
         assocs.enter().insert("line", ":first-child")
             .attr("class", "assoc")
-            .attr("data-assoc-id", function(d) {return d.id})
             .on("click", on_assoc_click)
             .on("contextmenu", on_assoc_contextmenu)
+        assocs.attr("data-assoc-id", function(d) {return d.id})
         assocs.exit().remove()
 
         topics = topics.data(nodes)
         topics.enter().append("circle")
             .attr("class", "topic")
             .attr("r", 8)
-            .attr("data-topic-id", function(d) {return d.id})
             .call(force.drag)
             .on("mouseup", on_mouseup)
             .on("contextmenu", on_topic_contextmenu)
             .append("title").text(function(d) {return d.label})
+        topics.attr("data-topic-id", function(d) {return d.id})
         topics.exit().remove()
 
         force.start()
