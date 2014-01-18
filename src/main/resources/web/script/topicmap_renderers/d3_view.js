@@ -87,6 +87,13 @@ function D3View() {
         restart()
     }
 
+    this.remove_association = function(assoc_id) {
+        js.delete(links, function(assoc) {
+            return assoc.id == assoc_id
+        })
+        restart()
+    }
+
     // ---
 
     this.set_topic_selection = function(topic_id) {
@@ -147,6 +154,8 @@ function D3View() {
             .attr("class", "assoc")
             .attr("data-assoc-id", function(d) {return d.id})
             .on("click", on_assoc_click)
+            .on("contextmenu", on_assoc_contextmenu)
+        assocs.exit().remove()
 
         topics = topics.data(nodes)
         topics.enter().append("circle")
@@ -155,7 +164,7 @@ function D3View() {
             .attr("data-topic-id", function(d) {return d.id})
             .call(force.drag)
             .on("mouseup", on_mouseup)
-            .on("contextmenu", on_contextmenu)
+            .on("contextmenu", on_topic_contextmenu)
             .append("title").text(function(d) {return d.label})
         topics.exit().remove()
 
@@ -222,12 +231,15 @@ function D3View() {
         dm4c.do_select_association(assoc.id)
     }
 
-    function on_contextmenu(topic) {
-        dm4c.do_select_topic(topic.id)
-        // Note: only dm4c.selected_object has the composite value (the TopicViewmodel has not)
-        var commands = dm4c.get_topic_commands(dm4c.selected_object, "context-menu")
+    function on_topic_contextmenu(topic) {
         var pos = d3.mouse(body)
-        dm4c.open_context_menu(commands, {x: pos[0], y: pos[1]})
+        dm4c.open_topic_contextmenu(topic.id, {x: pos[0], y: pos[1]})
+        d3.event.preventDefault()
+    }
+
+    function on_assoc_contextmenu(assoc) {
+        var pos = d3.mouse(body)
+        dm4c.open_association_contextmenu(assoc.id, {x: pos[0], y: pos[1]})
         d3.event.preventDefault()
     }
 

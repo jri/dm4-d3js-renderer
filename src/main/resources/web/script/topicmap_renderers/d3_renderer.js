@@ -87,6 +87,14 @@ function D3Renderer() {
         d3_view.remove_topic(topic_id)
     }
 
+    // ### TODO: principal copy in canvas_renderer.js
+    this.delete_association = function(assoc_id) {
+        // update viewmodel
+        for_all_topicmaps("delete_association", assoc_id)
+        // update view
+        d3_view.remove_association(assoc_id)
+    }
+
     // ---
 
     // ### TODO: copy in canvas_renderer.js
