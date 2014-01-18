@@ -145,6 +145,8 @@ function D3View() {
         assocs = assocs.data(links)
         assocs.enter().insert("line", ":first-child")
             .attr("class", "assoc")
+            .attr("data-assoc-id", function(d) {return d.id})
+            .on("click", on_assoc_click)
 
         topics = topics.data(nodes)
         topics.enter().append("circle")
@@ -183,6 +185,7 @@ function D3View() {
 
     function link_data(assoc) {
         return {
+            id:     assoc.id,
             source: assoc.get_topic_1(),
             target: assoc.get_topic_2()
         }
@@ -193,7 +196,7 @@ function D3View() {
     // === Events Handling ===
 
     function on_mousedown(topic) {
-        has_moved = false
+        has_moved = false           // ### TODO
     }
 
     function on_mouseup(topic) {
@@ -213,6 +216,10 @@ function D3View() {
                     .attr("y2", pos[1])
             }
         }
+    }
+
+    function on_assoc_click(assoc) {
+        dm4c.do_select_association(assoc.id)
     }
 
     function on_contextmenu(topic) {
@@ -264,7 +271,7 @@ function D3View() {
     }
 
     function get_association_dom(id) {
-        return d3.select(".assoc[data-topic-id=\"" + id + "\"]")
+        return d3.select(".assoc[data-assoc-id=\"" + id + "\"]")
     }
 
     // ---

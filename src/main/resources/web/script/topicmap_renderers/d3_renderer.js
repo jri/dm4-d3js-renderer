@@ -109,6 +109,18 @@ function D3Renderer() {
         return {select: topic, display: topic}
     }
 
+    // ### TODO: principal copy in canvas_renderer.js
+    this.select_association = function(assoc_id) {
+        // fetch from DB
+        var assoc = dm4c.fetch_association(assoc_id)
+        // update viewmodel
+        topicmap.set_association_selection(assoc_id)
+        // update view
+        d3_view.set_association_selection(assoc_id)
+        //
+        return assoc
+    }
+
     // ---
 
     this.begin_association = function(topic_id, x, y) {
