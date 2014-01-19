@@ -1,7 +1,7 @@
 function D3View() {
 
     // View
-    var svg
+    var svg, svg_g
     var width, height
 
     var force               // D3 force layout
@@ -14,16 +14,26 @@ function D3View() {
     var topicmap            // the viewmodel underlying this view (a TopicmapViewmodel)
 
     // Short-term interaction state
+    var canvas_move_in_progress     // true while canvas move is in progress (boolean)
     var association_in_progress     // true while new association is drawn (boolean)
     var mousedown_on_canvas         // true while canvas click or canvas move (boolean)
     var action_topic                // the topic being selected/moved/associated (TopicViewmodel)
+    var tmp_x, tmp_y                // coordinates while action is in progress
     var has_moved
+
+    // ### TODO: copy in canvas_view.js
+    var Coord = {
+        WINDOW: 1,      // browser window display area
+        CANVAS: 2,      // physical canvas display area -- the default
+        TOPICMAP: 3     // virtual (endless) topicmap space
+    }
 
     // ------------------------------------------------------------------------------------------------------ Public API
 
     this.display_topicmap = function(topicmap_viewmodel) {
 
         topicmap = topicmap_viewmodel
+        update_translation_dom()
 
         force = d3.layout.force()
             .charge(-120)           // default is -30
@@ -46,8 +56,8 @@ function D3View() {
 
         nodes = force.nodes()
         links = force.links()
-        topics = svg.selectAll(".topic")
-        assocs = svg.selectAll(".assoc")
+        topics = svg_g.selectAll(".topic")
+        assocs = svg_g.selectAll(".assoc")
 
         restart()
     }
@@ -60,6 +70,7 @@ function D3View() {
             .on("mouseup", on_canvas_mouseup)
             .on("mousemove", on_mousemove)
             .on("contextmenu", on_canvas_contextmenu)
+        svg_g = svg.append("g")
     }
 
     this.resize = function(size) {
@@ -131,7 +142,7 @@ function D3View() {
         action_topic = get_topic(topic_id)
         //
         set_drawing_cursor(true)
-        svg.insert("line", ":first-child")
+        svg_g.insert("line", ":first-child")
             .attr("class", "assoc in-progress")
             .attr("x1", action_topic.x)
             .attr("y1", action_topic.y)
@@ -221,7 +232,13 @@ function D3View() {
     }
 
     function on_canvas_mousedown() {
-        mousedown_on_canvas = true
+        if (event.which == 1) {         // ignore right-button to not initiate canvas move along with context menu
+            var canvas_pos = pos()
+            tmp_x = canvas_pos.x
+            tmp_y = canvas_pos.y
+            //
+            mousedown_on_canvas = true
+        }
     }
 
     function on_topic_mouseup(topic) {
@@ -233,7 +250,9 @@ function D3View() {
     }
 
     function on_canvas_mouseup() {
-        if (mousedown_on_canvas) {
+        if (canvas_move_in_progress) {
+            end_canvas_move()
+        } else if (mousedown_on_canvas) {
             dm4c.page_panel.save()      // ### TODO: the renderer should not responsible for saving the panel
             dm4c.do_reset_selection()   // ### TODO: only reset selection if no canvas move was in progress
             mousedown_on_canvas = false
@@ -241,13 +260,21 @@ function D3View() {
     }
 
     function on_mousemove() {
-        if (action_topic) {
-            if (association_in_progress) {
-                var pos = d3.mouse(svg[0][0])
+        if (action_topic || mousedown_on_canvas) {
+            var p = pos()
+            if (mousedown_on_canvas) {
+                if (!canvas_move_in_progress) {
+                    set_moving_cursor(true)
+                    canvas_move_in_progress = true
+                }
+                translate_by(p.x - tmp_x, p.y - tmp_y)
+            } else if (association_in_progress) {
                 get_association_in_progress()
-                    .attr("x2", pos[0])
-                    .attr("y2", pos[1])
+                    .attr("x2", p.x - topicmap.trans_x)
+                    .attr("y2", p.y - topicmap.trans_y)
             }
+            tmp_x = p.x
+            tmp_y = p.y
         }
     }
 
@@ -256,28 +283,37 @@ function D3View() {
     }
 
     function on_topic_contextmenu(topic) {
-        var pos = d3.mouse(body)
-        dm4c.open_topic_contextmenu(topic.id, {x: pos[0], y: pos[1]})
+        dm4c.open_topic_contextmenu(topic.id, pos(Coord.WINDOW))
         d3.event.preventDefault()       // suppress browser context menu
         d3.event.stopPropagation()      // bubbling would invoke canvas context menu
         // ### TODO: but without bubbling the topic context menu is closed prematurly on mouse up (see GUITookit Menu)
     }
 
     function on_assoc_contextmenu(assoc) {
-        var pos = d3.mouse(body)
-        dm4c.open_association_contextmenu(assoc.id, {x: pos[0], y: pos[1]})
+        dm4c.open_association_contextmenu(assoc.id, pos(Coord.WINDOW))
         d3.event.preventDefault()       // suppress browser context menu
         d3.event.stopPropagation()      // bubbling would invoke canvas context menu
     }
 
     function on_canvas_contextmenu() {
-        var body_pos = d3.mouse(body)
-        var svg_pos = d3.mouse(svg[0][0])
-        dm4c.open_canvas_contextmenu({x: body_pos[0], y: body_pos[1]}, {x: svg_pos[0], y: svg_pos[1]})
+        dm4c.open_canvas_contextmenu(pos(Coord.WINDOW), pos(Coord.TOPICMAP))
         d3.event.preventDefault()       // suppress browser context menu
     }
 
     // ---
+
+    function end_canvas_move() {
+        // update viewmodel
+        topicmap.set_translation(topicmap.trans_x, topicmap.trans_y)
+        // Note: the view is already up-to-date. It is constantly updated while mouse dragging.
+        // render
+        set_moving_cursor(false)
+        //
+        dm4c.fire_event("post_move_canvas", topicmap.trans_x, topicmap.trans_y)
+        //
+        canvas_move_in_progress = false
+        mousedown_on_canvas = false
+    }
 
     // ### TODO: principal copy in canvas_view.js
     function end_association_in_progress(topic) {
@@ -330,9 +366,27 @@ function D3View() {
         return d3.select(".assoc.in-progress")
     }
 
+    function update_translation_dom() {
+        svg_g.attr("transform", "translate(" + topicmap.trans_x + "," + topicmap.trans_y + ")")
+    }
 
 
-    // ===
+
+    // === Geometry Management ===
+
+    function pos(coordinate_system) {
+        // set default
+        coordinate_system = coordinate_system || Coord.CANVAS
+        //
+        var container = coordinate_system == Coord.WINDOW ? body : svg[0][0]
+        var m = d3.mouse(container)
+        var p = {x: m[0], y: m[1]}
+        if (coordinate_system == Coord.TOPICMAP) {
+            p.x -= topicmap.trans_x
+            p.y -= topicmap.trans_y
+        }
+        return p
+    }
 
     // ### TODO: copy in canvas_view.js
     function random_position() {
@@ -340,5 +394,12 @@ function D3View() {
             x: width  * Math.random() - topicmap.trans_x,
             y: height * Math.random() - topicmap.trans_y
         }
+    }
+
+    function translate_by(dx, dy) {
+        // update viewmodel
+        topicmap.translate_by(dx, dy)   // Note: topicmap.translate_by() doesn't update the DB.
+        // render
+        update_translation_dom()
     }
 }
