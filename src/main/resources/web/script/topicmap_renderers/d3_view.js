@@ -59,6 +59,7 @@ function D3View() {
             .on("mousedown", on_canvas_mousedown)
             .on("mouseup", on_canvas_mouseup)
             .on("mousemove", on_mousemove)
+            .on("contextmenu", on_canvas_contextmenu)
     }
 
     this.resize = function(size) {
@@ -216,7 +217,7 @@ function D3View() {
 
     function on_topic_mousedown(topic) {
         has_moved = false               // ### TODO
-        d3.event.stopPropagation()      // event must not reach the canvas
+        d3.event.stopPropagation()      // bubbling would reset the selection
     }
 
     function on_canvas_mousedown() {
@@ -257,13 +258,23 @@ function D3View() {
     function on_topic_contextmenu(topic) {
         var pos = d3.mouse(body)
         dm4c.open_topic_contextmenu(topic.id, {x: pos[0], y: pos[1]})
-        d3.event.preventDefault()
+        d3.event.preventDefault()       // suppress browser context menu
+        d3.event.stopPropagation()      // bubbling would invoke canvas context menu
+        // ### TODO: but without bubbling the topic context menu is closed prematurly on mouse up (see GUITookit Menu)
     }
 
     function on_assoc_contextmenu(assoc) {
         var pos = d3.mouse(body)
         dm4c.open_association_contextmenu(assoc.id, {x: pos[0], y: pos[1]})
-        d3.event.preventDefault()
+        d3.event.preventDefault()       // suppress browser context menu
+        d3.event.stopPropagation()      // bubbling would invoke canvas context menu
+    }
+
+    function on_canvas_contextmenu() {
+        var body_pos = d3.mouse(body)
+        var svg_pos = d3.mouse(svg[0][0])
+        dm4c.open_canvas_contextmenu({x: body_pos[0], y: body_pos[1]}, {x: svg_pos[0], y: svg_pos[1]})
+        d3.event.preventDefault()       // suppress browser context menu
     }
 
     // ---
