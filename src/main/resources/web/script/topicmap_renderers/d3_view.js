@@ -66,9 +66,9 @@ function D3View() {
         svg = d3.select(".topicmap-renderer").append("svg")
             .attr("width", width)
             .attr("height", height)
-            .on("mousedown", on_canvas_mousedown)
-            .on("mouseup", on_canvas_mouseup)
-            .on("mousemove", on_mousemove)
+            .on("mousedown",   on_canvas_mousedown)
+            .on("mouseup",     on_canvas_mouseup)
+            .on("mousemove",   on_canvas_mousemove)
             .on("contextmenu", on_canvas_contextmenu)
         svg_g = svg.append("g")
     }
@@ -173,7 +173,7 @@ function D3View() {
         assocs = assocs.data(links)
         assocs.enter().insert("line", ":first-child")
             .attr("class", "assoc")
-            .on("click", on_assoc_click)
+            .on("click",       on_assoc_click)
             .on("contextmenu", on_assoc_contextmenu)
         assocs.attr("data-assoc-id", function(d) {return d.id})
         assocs.exit().remove()
@@ -182,10 +182,10 @@ function D3View() {
         topics.enter().append("circle")
             .attr("class", "topic")
             .attr("r", 8)
-            .call(force.drag)
-            .on("mousedown", on_topic_mousedown)
-            .on("mouseup", on_topic_mouseup)
+            .on("mousedown",   on_topic_mousedown)
+            .on("mouseup",     on_topic_mouseup)
             .on("contextmenu", on_topic_contextmenu)
+            .call(force.drag)   // our own listeners can suppress the force.drag() listeners as we register before
             .append("title").text(function(d) {return d.label})
         topics.attr("data-topic-id", function(d) {return d.id})
         topics.exit().remove()
@@ -228,11 +228,15 @@ function D3View() {
 
     function on_topic_mousedown(topic) {
         has_moved = false               // ### TODO
-        d3.event.stopPropagation()      // bubbling would reset the selection
+        if (d3.event.button == 2) {
+            d3.event.stopImmediatePropagation()     // suppress force.drag() listener when invoking topic context menu
+        } else {
+            d3.event.stopPropagation()              // bubbling would reset the selection
+        }
     }
 
     function on_canvas_mousedown() {
-        if (event.which == 1) {         // ignore right-button to not initiate canvas move along with context menu
+        if (d3.event.button == 0) {     // suppress canvas move when invoking canvas context menu
             var canvas_pos = pos()
             tmp_x = canvas_pos.x
             tmp_y = canvas_pos.y
@@ -259,7 +263,7 @@ function D3View() {
         }
     }
 
-    function on_mousemove() {
+    function on_canvas_mousemove() {
         if (action_topic || mousedown_on_canvas) {
             var p = pos()
             if (mousedown_on_canvas) {
@@ -302,6 +306,7 @@ function D3View() {
 
     // ---
 
+    // ### TODO: principal copy in canvas_view.js
     function end_canvas_move() {
         // update viewmodel
         topicmap.set_translation(topicmap.trans_x, topicmap.trans_y)
@@ -374,6 +379,7 @@ function D3View() {
 
     // === Geometry Management ===
 
+    // ### TODO: principal copy in canvas_view.js
     function pos(coordinate_system) {
         // set default
         coordinate_system = coordinate_system || Coord.CANVAS
@@ -396,6 +402,7 @@ function D3View() {
         }
     }
 
+    // ### TODO: principal copy in canvas_view.js
     function translate_by(dx, dy) {
         // update viewmodel
         topicmap.translate_by(dx, dy)   // Note: topicmap.translate_by() doesn't update the DB.
