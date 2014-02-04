@@ -224,7 +224,7 @@ function D3View() {
 
 
 
-    // === Events Handling ===
+    // === Event Handling ===
 
     function on_topic_mousedown(topic) {
         has_moved = false               // ### TODO
