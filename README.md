@@ -14,6 +14,10 @@ DeepaMehta 4 is a platform for collaboration and knowledge management.
 Version History
 ---------------
 
+**0.1.1** -- Jun 8, 2014
+
+* Compatible with DeepaMehta 4.3
+
 **0.1** -- Feb 18, 2014
 
 * Experimental: SVG-based animated force layout for automatic topic positioning
@@ -22,4 +26,4 @@ Version History
 
 ------------
 Jörg Richter  
-Feb 18, 2014
+Jun 8, 2014
